@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Home Screen -->
+    <item
+        android:id="@+id/homeFragment"
+        android:title="Home"
+        android:icon="@android:drawable/ic_menu_mylocation"
+        app:showAsAction="ifRoom|withText" />
+
+    <!-- Map Screen -->
+    <item
+        android:id="@+id/mapFragment"
+        android:title="Map"
+        android:icon="@android:drawable/ic_menu_mapmode"
+        app:showAsAction="ifRoom|withText" />
+
+    <!-- Geofences Screen -->
+    <item
+        android:id="@+id/geofencesFragment"
+        android:title="Geofences"
+        android:icon="@android:drawable/ic_menu_agenda"
+        app:showAsAction="ifRoom|withText" />
+
+</menu>

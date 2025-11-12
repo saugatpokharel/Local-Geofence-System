@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <!-- Home Screen -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.geofenceapplication.ui.HomeFragment"
+        android:label="Home" />
+
+    <!-- Map Screen -->
+    <fragment
+        android:id="@+id/mapFragment"
+        android:name="com.example.geofenceapplication.ui.MapFragment"
+        android:label="Map" />
+
+    <!-- Geofences Screen -->
+    <fragment
+        android:id="@+id/geofencesFragment"
+        android:name="com.example.geofenceapplication.ui.GeofencesFragment"
+        android:label="Geofences" />
+
+</navigation>
