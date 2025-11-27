@@ -3,20 +3,19 @@ package com.example.geofenceapplication.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
-import android.content.pm.PackageManager
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.geofenceapplication.R
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import androidx.activity.result.contract.ActivityResultContracts
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
@@ -41,6 +40,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val btnRequestPermission = view.findViewById<Button>(R.id.btnRequestPermission)
         val btnOpenInMaps = view.findViewById<Button>(R.id.btnOpenInMaps)
         val btnShare = view.findViewById<Button>(R.id.btnShare)
+        val btnOpenSensors = view.findViewById<Button>(R.id.btnOpenSensors)
 
         btnRequestPermission.setOnClickListener {
             requestFineLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -50,9 +50,17 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             openLocationInMaps(txtLocation.text.toString())
         }
 
+        btnOpenSensors.setOnClickListener {
+            val intent = Intent(requireContext(), SensorActivity::class.java)
+            startActivity(intent)
+        }
+
+
         btnShare.setOnClickListener {
             shareApp()
         }
+
+
 
         getLastLocation()
     }
