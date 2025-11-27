@@ -35,4 +35,11 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp" />
 
+    <Button
+        android:id="@+id/btnOpenSensors"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Sensor Demo (Compose)"
+        android:layout_marginTop="16dp"/>
+
 </LinearLayout>
