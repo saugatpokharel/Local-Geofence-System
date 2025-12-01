@@ -36,7 +36,7 @@ class Geofencer(private val context: Context) {
         lng: Double,
         radiusMeters: Float
     ) {
-        // Debug: we KNOW this is being called (you already see this)
+
         Toast.makeText(context, "addGeofence() called", Toast.LENGTH_SHORT).show()
 
         // Check location permission
@@ -77,4 +77,15 @@ class Geofencer(private val context: Context) {
                 Toast.makeText(context, "Failed to add geofence: $msg", Toast.LENGTH_LONG).show()
             }
     }
+
+    fun removeAllGeofences() {
+        geofencingClient.removeGeofences(geofencePendingIntent)
+            .addOnSuccessListener {
+                Toast.makeText(context, "All geofences removed", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Failed to remove geofences", Toast.LENGTH_SHORT).show()
+            }
+    }
+
 }

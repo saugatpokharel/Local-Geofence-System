@@ -68,7 +68,7 @@ fun GeofencesScreen(
     onItemClick: (String) -> Unit,
     onItemLongClick: (String) -> Unit
 ) {
-    val context = LocalContext.current // not strictly needed here but handy if you extend
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier

@@ -37,6 +37,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
         geofencer = Geofencer(requireContext())
 
         val mapFragment =
@@ -52,8 +53,12 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                 radius = safeRadius
                 circle?.radius = radius.toDouble()
             }
+
+
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+
+
         })
     }
 
@@ -62,7 +67,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
         googleMap = gMap
         gMap.uiSettings.isZoomControlsEnabled = true
 
-        // 👉 Check permission here
+        // Check permission here
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -108,7 +113,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
         }
     }
 
-    // 👉 Handle the permission result here
+    // Handle the permission result here
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
