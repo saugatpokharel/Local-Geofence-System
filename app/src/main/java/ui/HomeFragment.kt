@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -42,18 +41,16 @@ class HomeFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
     }
 
-    override fun onCreateView(inflater: android.view.LayoutInflater,
-                              container: android.view.ViewGroup?,
-                              savedInstanceState: Bundle?
+    override fun onCreateView(
+        inflater: android.view.LayoutInflater,
+        container: android.view.ViewGroup?,
+        savedInstanceState: Bundle?
     ): android.view.View {
 
         return ComposeView(requireContext()).apply {
             setContent {
                 HomeScreenCompose(
-                    fusedLocationClient = fusedLocationClient,
-                    openSensors = {
-                        startActivity(Intent(requireContext(), SensorActivity::class.java))
-                    }
+                    fusedLocationClient = fusedLocationClient
                 )
             }
         }
@@ -64,13 +61,12 @@ class HomeFragment : Fragment() {
 @Composable
 fun HomeScreenCompose(
     fusedLocationClient: FusedLocationProviderClient,
-    openSensors: () -> Unit
 ) {
     val context = LocalContext.current
 
     var locationText by remember { mutableStateOf("Location: unknown") }
 
-    // PERMISSION LAUNCHER
+    // PERMISSION LAUNCHER for location
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -82,6 +78,7 @@ fun HomeScreenCompose(
             }
         }
 
+    // PERMISSION LAUNCHER for notifications (Android 13+)
     val notificationPermissionLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -91,9 +88,6 @@ fun HomeScreenCompose(
             }
         }
 
-
-
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -102,20 +96,17 @@ fun HomeScreenCompose(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
+        // Show last known location
         Text(text = locationText)
 
+        // Request GPS location permission
         Button(onClick = {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }) {
             Text("Request Location Permission")
         }
 
-        Button(onClick = {
-            openLocationInMapsCompose(context, locationText)
-        }) {
-            Text("Open in Maps")
-        }
-
+        // Share app button
         Button(onClick = {
             val intent = Intent(Intent.ACTION_SEND)
             intent.type = "text/plain"
@@ -125,11 +116,7 @@ fun HomeScreenCompose(
             Text("Share App")
         }
 
-        Button(onClick = openSensors) {
-            Text("Open Sensor Activity")
-        }
-
-
+        // Enable notifications (needed so geofence notifications show on Android 13+)
         Button(onClick = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -172,20 +159,5 @@ fun checkAndFetchLocation(
 
     if (hasPermission) {
         getLastLocationCompose(fusedLocationClient, onResult)
-    }
-}
-
-fun openLocationInMapsCompose(context: android.content.Context, text: String) {
-    val regex = Regex("(-?\\d+\\.\\d+), (-?\\d+\\.\\d+)")
-    val match = regex.find(text)
-
-    if (match != null) {
-        val lat = match.groupValues[1]
-        val lng = match.groupValues[2]
-        val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(Current Location)")
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        context.startActivity(intent)
-    } else {
-        Toast.makeText(context, "Location unavailable", Toast.LENGTH_SHORT).show()
     }
 }
