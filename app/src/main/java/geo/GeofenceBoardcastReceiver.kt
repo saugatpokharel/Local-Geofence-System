@@ -19,9 +19,10 @@ import com.example.geofenceapplication.R
 
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override fun onReceive(context: Context, intent: Intent) {
 
-        // 👉 DEBUG TOAST
+        // VERY IMPORTANT DEBUG
         Toast.makeText(context, "Geofence event received", Toast.LENGTH_SHORT).show()
 
         val event = GeofencingEvent.fromIntent(intent) ?: return
@@ -35,6 +36,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         showNotification(context, transitionType)
     }
+
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun showNotification(context: Context, message: String) {
