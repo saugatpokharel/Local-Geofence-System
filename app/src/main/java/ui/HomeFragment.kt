@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +82,18 @@ fun HomeScreenCompose(
             }
         }
 
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (!granted) {
+                Toast.makeText(context, "Notification permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -114,6 +127,15 @@ fun HomeScreenCompose(
 
         Button(onClick = openSensors) {
             Text("Open Sensor Activity")
+        }
+
+
+        Button(onClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }) {
+            Text("Enable Notifications")
         }
 
         // Automatically fetch last location

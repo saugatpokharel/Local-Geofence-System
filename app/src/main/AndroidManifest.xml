@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -41,10 +42,7 @@
         <receiver
             android:name=".geo.GeofenceBroadcastReceiver"
             android:exported="false">
-            <intent-filter>
-                <!-- Corrected action -->
-                <action android:name="com.example.geofenceapplication.GEOFENCE_EVENT" />
-            </intent-filter>
+
         </receiver>
 
         <!-- Google Maps API Key -->

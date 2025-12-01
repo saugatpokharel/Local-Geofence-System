@@ -1,20 +1,29 @@
 package com.example.geofenceapplication.geo
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import android.widget.Toast
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.android.gms.location.GeofencingEvent
 import com.google.android.gms.location.Geofence
 import com.example.geofenceapplication.R
 
+
+
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+
+        // 👉 DEBUG TOAST
+        Toast.makeText(context, "Geofence event received", Toast.LENGTH_SHORT).show()
+
         val event = GeofencingEvent.fromIntent(intent) ?: return
         if (event.hasError()) return
 
@@ -27,10 +36,10 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         showNotification(context, transitionType)
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun showNotification(context: Context, message: String) {
         val channelId = "geofence_channel"
 
-        // Create notification channel (Android 8+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
