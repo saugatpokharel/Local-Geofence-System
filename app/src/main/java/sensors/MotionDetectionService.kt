@@ -1,0 +1,4 @@
+package sensors
+
+class MotionDetectionService {
+}
