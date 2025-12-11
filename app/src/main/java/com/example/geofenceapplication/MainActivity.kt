@@ -8,9 +8,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
+import com.example.geofenceapplication.geo.Geofencer
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import data.AppDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,8 +48,13 @@ class MainActivity : AppCompatActivity() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setupWithNavController(navController)
 
-        // Ask for permissions early in the app's lifecycle
+        // Ask for permissions early
         requestAllPermissionsIfNeeded()
+
+        // If already granted (e.g. returning to app), re-register geofences now
+        if (hasAllPermissions()) {
+            reRegisterGeofencesFromDb()
+        }
     }
 
     private fun hasAllPermissions(): Boolean =
@@ -75,6 +86,8 @@ class MainActivity : AppCompatActivity() {
 
             if (grantedCount == total) {
                 Toast.makeText(this, "All permissions granted ✅", Toast.LENGTH_SHORT).show()
+                // Now that we have permissions, (re)register geofences
+                reRegisterGeofencesFromDb()
             } else {
                 Toast.makeText(
                     this,
@@ -82,6 +95,47 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
             }
+        }
+    }
+
+    /**
+     * Read all saved geofences from our local "database"
+     * and register them with the Android geofencing system.
+     *
+     * This makes sure geofences are active again each time
+     * the app starts (as long as we still have location permission).
+     */
+    private fun reRegisterGeofencesFromDb() {
+        lifecycleScope.launch {
+            val dao = AppDatabase.getInstance(applicationContext).geofenceDao
+            val savedGeofences = withContext(Dispatchers.IO) {
+                dao.getAllGeofences()
+            }
+
+            if (savedGeofences.isEmpty()) {
+                // Nothing to register
+                return@launch
+            }
+
+            val geofencer = Geofencer(applicationContext)
+
+            // Clear any existing geofences in the system,
+            // then re-add all from our DB so DB is source of truth.
+            geofencer.removeAllGeofences()
+
+            savedGeofences.forEach { entity ->
+                geofencer.addGeofence(
+                    lat = entity.latitude,
+                    lng = entity.longitude,
+                    radiusMeters = entity.radiusMeters
+                )
+            }
+
+            Toast.makeText(
+                this@MainActivity,
+                "Re-registered ${savedGeofences.size} geofence(s)",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
