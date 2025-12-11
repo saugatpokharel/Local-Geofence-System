@@ -21,10 +21,14 @@ import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import androidx.fragment.app.activityViewModels
+
+
 class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+
     }
 
     private var googleMap: GoogleMap? = null
