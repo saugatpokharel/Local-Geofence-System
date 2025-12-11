@@ -1,24 +1,41 @@
-package com.example.geofenceapplication.data
+package data
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import kotlinx.coroutines.flow.Flow
-
-@Dao
+/**
+ * Data access object (DAO) for geofences.
+ *
+ * This is an abstraction over our storage.
+ * The implementation will live inside AppDatabase.
+ */
 interface GeofenceDao {
 
-    @Query("SELECT * FROM geofences ORDER BY createdAt DESC")
-    fun getAllGeofences(): Flow<List<GeofenceEntity>>
+    /**
+     * Get all saved geofences.
+     */
+    fun getAllGeofences(): List<GeofenceEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertGeofence(geofence: GeofenceEntity)
+    /**
+     * Get a single geofence by its id, or null if it doesn't exist.
+     */
+    fun getGeofenceById(id: Long): GeofenceEntity?
 
-    @Delete
-    suspend fun deleteGeofence(geofence: GeofenceEntity)
+    /**
+     * Insert a new geofence or update an existing one.
+     *
+     * - If entity.id == 0L -> assign a new id and insert.
+     * - Otherwise -> replace the existing geofence with the same id.
+     *
+     * Returns the saved entity (with a non-zero id).
+     */
+    fun upsertGeofence(entity: GeofenceEntity): GeofenceEntity
 
-    @Query("DELETE FROM geofences")
-    suspend fun clearAll()
+    /**
+     * Delete a geofence by id.
+     */
+    fun deleteGeofence(id: Long)
+
+    /**
+     * Remove all stored geofences.
+     * (Probably not needed often, but useful for debugging / reset.)
+     */
+    fun clearAll()
 }

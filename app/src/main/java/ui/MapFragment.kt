@@ -2,14 +2,17 @@ package com.example.geofenceapplication.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.geofenceapplication.R
 import com.example.geofenceapplication.geo.Geofencer
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -21,14 +24,15 @@ import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import androidx.fragment.app.activityViewModels
-
+import data.AppDatabase
+import data.GeofenceEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
-
     }
 
     private var googleMap: GoogleMap? = null
@@ -41,7 +45,6 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
         geofencer = Geofencer(requireContext())
 
         val mapFragment =
@@ -52,18 +55,86 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
         seekRadius.progress = radius.toInt()
 
         seekRadius.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(
+                seekBar: SeekBar?,
+                progress: Int,
+                fromUser: Boolean
+            ) {
                 val safeRadius = progress.coerceAtLeast(50).toFloat()
                 radius = safeRadius
                 circle?.radius = radius.toDouble()
             }
 
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-
-
         })
+    }
+
+    /**
+     * Save a geofence definition persistently using our simple "database"
+     * (SharedPreferences + JSON behind the scenes).
+     */
+    private fun saveGeofenceToDb(latLng: LatLng, radiusMeters: Float, name: String) {
+        val dao = AppDatabase.getInstance(requireContext()).geofenceDao
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            dao.upsertGeofence(
+                GeofenceEntity(
+                    name = name,
+                    latitude = latLng.latitude,
+                    longitude = latLng.longitude,
+                    radiusMeters = radiusMeters
+                )
+            )
+        }
+    }
+
+    /**
+     * Show a dialog so the user can give a friendly name to the geofence.
+     * Only after they confirm do we register + save the geofence.
+     */
+    private fun showNameInputDialog(latLng: LatLng) {
+        val context = requireContext()
+        val input = EditText(context).apply {
+            hint = "e.g. Home, Work, College"
+        }
+
+        AlertDialog.Builder(context)
+            .setTitle("Name this geofence")
+            .setView(input)
+            .setPositiveButton("Save") { dialog, _ ->
+                val typedName = input.text.toString().trim()
+                val finalName = if (typedName.isNotEmpty()) {
+                    typedName
+                } else {
+                    // Fallback default if they leave it empty
+                    "Geofence at ${
+                        String.format("%.4f", latLng.latitude)
+                    }, ${
+                        String.format("%.4f", latLng.longitude)
+                    }"
+                }
+
+                Toast.makeText(context, "Adding geofence…", Toast.LENGTH_SHORT).show()
+
+                // 1) Register geofence with Android geofencing APIs
+                geofencer.addGeofence(latLng.latitude, latLng.longitude, radius)
+
+                // 2) Persist it with the chosen name
+                saveGeofenceToDb(latLng, radius, finalName)
+
+                Toast.makeText(
+                    context,
+                    "Geofence \"$finalName\" saved",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.cancel()
+            }
+            .show()
     }
 
     @SuppressLint("MissingPermission")
@@ -71,7 +142,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
         googleMap = gMap
         gMap.uiSettings.isZoomControlsEnabled = true
 
-        // Check permission here
+        // Check location permission
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -92,8 +163,9 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
         val defaultLatLng = LatLng(53.3498, -6.2603) // Dublin
         gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLatLng, 15f))
 
-        // LONG PRESS sets the geofence center AND registers geofence
+        // LONG PRESS sets the geofence center and shows a naming dialog
         gMap.setOnMapLongClickListener { latLng ->
+            // Update marker + circle
             marker?.remove()
             circle?.remove()
 
@@ -112,8 +184,8 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                     .fillColor(0x44FF0000)
             )
 
-            Toast.makeText(requireContext(), "Adding geofence…", Toast.LENGTH_SHORT).show()
-            geofencer.addGeofence(latLng.latitude, latLng.longitude, radius)
+            // Ask the user for a friendly name before saving
+            showNameInputDialog(latLng)
         }
     }
 
@@ -129,7 +201,6 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
-                // Now that we have permission, enable My Location
                 googleMap?.let { map ->
                     if (ContextCompat.checkSelfPermission(
                             requireContext(),
@@ -137,7 +208,11 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                         ) == PackageManager.PERMISSION_GRANTED
                     ) {
                         map.isMyLocationEnabled = true
-                        Toast.makeText(requireContext(), "Location permission granted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Location permission granted",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } else {

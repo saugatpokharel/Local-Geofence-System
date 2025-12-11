@@ -1,16 +1,15 @@
-package com.example.geofenceapplication.data
+package data
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "geofences")
+/**
+ * Represents a single saved geofence in the app.
+ *
+ * This is a plain Kotlin data class – will manually
+ * save/load it using SharedPreferences + JSON in AppDatabase.
+ */
 data class GeofenceEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val name: String,
+    val id: Long = 0L,              // 0L means "not yet stored" – we'll assign an id when saving
+    val name: String,               // e.g. "Home", "Work"
     val latitude: Double,
     val longitude: Double,
-    val radius: Float,
-    val isActive: Boolean = true,
-    val createdAt : Long = System.currentTimeMillis()
+    val radiusMeters: Float         // radius in meters
 )
