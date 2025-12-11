@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.common.api.ApiException
@@ -20,7 +21,6 @@ class Geofencer(private val context: Context) {
         LocationServices.getGeofencingClient(context)
 
     private val geofencePendingIntent: PendingIntent by lazy {
-        // Explicit intent, no custom action
         val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
 
         PendingIntent.getBroadcast(
@@ -39,14 +39,35 @@ class Geofencer(private val context: Context) {
 
         Toast.makeText(context, "addGeofence() called", Toast.LENGTH_SHORT).show()
 
-        // Check location permission
+        // Check foreground location permission
         if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            Toast.makeText(context, "No location permission, cannot add geofence", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "No FINE_LOCATION permission, cannot add geofence",
+                Toast.LENGTH_LONG
+            ).show()
             return
+        }
+
+        // On Android 10+ we really want background location for geofences
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val hasBackground = ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasBackground) {
+                Toast.makeText(
+                    context,
+                    "No BACKGROUND_LOCATION permission – geofences may not trigger reliably.",
+                    Toast.LENGTH_LONG
+                ).show()
+                // We still attempt to add the geofence, but it may not fire in background.
+            }
         }
 
         val geofence = Geofence.Builder()
@@ -66,15 +87,24 @@ class Geofencer(private val context: Context) {
 
         geofencingClient.addGeofences(request, geofencePendingIntent)
             .addOnSuccessListener {
-                Toast.makeText(context, "Geofence registered OK", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Geofence registered OK",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             .addOnFailureListener { e ->
                 val msg = if (e is ApiException) {
-                    GeofenceStatusCodes.getStatusCodeString(e.statusCode)
+                    val codeText = GeofenceStatusCodes.getStatusCodeString(e.statusCode)
+                    "ApiException: $codeText (${e.statusCode})"
                 } else {
                     e.message ?: "Unknown error"
                 }
-                Toast.makeText(context, "Failed to add geofence: $msg", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    "Failed to add geofence: $msg",
+                    Toast.LENGTH_LONG
+                ).show()
             }
     }
 
@@ -87,5 +117,4 @@ class Geofencer(private val context: Context) {
                 Toast.makeText(context, "Failed to remove geofences", Toast.LENGTH_SHORT).show()
             }
     }
-
 }
