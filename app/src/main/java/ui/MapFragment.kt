@@ -111,32 +111,39 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                 val finalName = if (typedName.isNotEmpty()) {
                     typedName
                 } else {
-                    // Fallback default if they leave it empty
-                    "Geofence at ${
-                        String.format("%.4f", latLng.latitude)
-                    }, ${
-                        String.format("%.4f", latLng.longitude)
-                    }"
+                    "Unnamed Geofence"
                 }
 
-                Toast.makeText(context, "Adding geofence…", Toast.LENGTH_SHORT).show()
+                viewLifecycleOwner.lifecycleScope.launch {
 
-                // 1) Register geofence with Android geofencing APIs
-                geofencer.addGeofence(
-                    lat = latLng.latitude,
-                    lng = latLng.longitude,
-                    radiusMeters = radius,
-                    requestId = finalName    // use friendly name as requestId
-                )
+                    // 1️⃣ Save to DB FIRST (this gives us a real ID)
+                    val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val dao = AppDatabase.getInstance(requireContext()).geofenceDao
+                        dao.upsertGeofence(
+                            GeofenceEntity(
+                                name = finalName,
+                                latitude = latLng.latitude,
+                                longitude = latLng.longitude,
+                                radiusMeters = radius
+                            )
+                        )
+                    }
 
-                // 2) Persist it with the chosen name
-                saveGeofenceToDb(latLng, radius, finalName)
+                    // 2️⃣ Register geofence with STABLE requestId
+                    val requestId = "GEOFENCE_${saved.id}"
+                    geofencer.addGeofence(
+                        lat = saved.latitude,
+                        lng = saved.longitude,
+                        radiusMeters = saved.radiusMeters,
+                        requestId = requestId
+                    )
 
-                Toast.makeText(
-                    context,
-                    "Geofence \"$finalName\" saved",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    Toast.makeText(
+                        context,
+                        "Geofence \"${saved.name}\" saved",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
                 dialog.dismiss()
             }

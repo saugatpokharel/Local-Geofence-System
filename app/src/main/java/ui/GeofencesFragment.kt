@@ -81,17 +81,11 @@ class GeofencesFragment : Fragment() {
                                     scope.launch(Dispatchers.IO) {
                                         dao.deleteGeofence(target.id)
 
-                                        // Keep Android geofencing in sync:
-                                        // remove all and re-add the remaining ones
-                                        geofencer.removeAllGeofences()
-                                        updatedList.forEach { gf ->
-                                            geofencer.addGeofence(
-                                                lat = gf.latitude,
-                                                lng = gf.longitude,
-                                                radiusMeters = gf.radiusMeters,
-                                                requestId = gf.name
-                                            )
-                                        }
+
+                                        geofencer.removeGeofenceByRequestId("GEOFENCE_${target.id}")
+
+
+
                                     }
                                 }
                             ) {
