@@ -3,16 +3,17 @@ package com.example.geofenceapplication.geo
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.example.geofenceapplication.R
+import com.example.geofenceapplication.ui.GeofenceAlertActivity
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
@@ -21,7 +22,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
 
-        // Debug: see if the receiver is actually triggered
+        // Debug: receiver triggered
         Toast.makeText(context, "Geofence event received", Toast.LENGTH_SHORT).show()
 
         val event = GeofencingEvent.fromIntent(intent)
@@ -36,22 +37,40 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             return
         }
 
-        val transitionText = when (event.geofenceTransition) {
-            Geofence.GEOFENCE_TRANSITION_ENTER -> "Entered geofence"
-            Geofence.GEOFENCE_TRANSITION_EXIT -> "Exited geofence"
-            Geofence.GEOFENCE_TRANSITION_DWELL -> "Dwelling in geofence"
-            else -> "Geofence trigger"
+        val transitionType = event.geofenceTransition
+
+        // requestId is the ID we gave when creating the geofence
+        val requestId = event.triggeringGeofences
+            ?.firstOrNull()
+            ?.requestId
+            ?: "this area"
+
+        val userMessage = when (transitionType) {
+            Geofence.GEOFENCE_TRANSITION_ENTER ->
+                "You have entered the geofence: \"$requestId\""
+            Geofence.GEOFENCE_TRANSITION_EXIT ->
+                "You have left the geofence: \"$requestId\""
+            Geofence.GEOFENCE_TRANSITION_DWELL ->
+                "You are within the geofence: \"$requestId\""
+            else -> "Geofence event at \"$requestId\""
         }
 
-        val triggeredIds = event.triggeringGeofences
-            ?.joinToString { it.requestId }
-            ?: "Unknown"
+        // 1) Immediately open a full-screen alert with OK button
+        openAlertScreen(context, userMessage)
 
-        val message = "$transitionText\nGeofences: $triggeredIds"
-
-        showNotification(context, message)
+        // 2) Optionally also show a notification (kept, but not required)
+        showNotification(context, userMessage)
     }
 
+    private fun openAlertScreen(context: Context, message: String) {
+        val alertIntent = Intent(context, GeofenceAlertActivity::class.java).apply {
+            putExtra("message", message)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(alertIntent)
+    }
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun showNotification(context: Context, message: String) {
         val channelId = "geofence_channel"
 
@@ -66,23 +85,16 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             mgr.createNotificationChannel(channel)
         }
 
-        // Check POST_NOTIFICATIONS permission on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val hasNotificationPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!hasNotificationPermission) {
-                // Permission not granted – avoid SecurityException
-                Toast.makeText(
-                    context,
-                    "No notification permission – cannot show geofence alert.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                return
-            }
+        val alertIntent = Intent(context, GeofenceAlertActivity::class.java).apply {
+            putExtra("message", message)
         }
+
+        val pendingAlertIntent = PendingIntent.getActivity(
+            context,
+            0,
+            alertIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -90,9 +102,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingAlertIntent)
 
-        val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.notify(1001, builder.build())
+        NotificationManagerCompat.from(context).notify(1001, builder.build())
     }
 }

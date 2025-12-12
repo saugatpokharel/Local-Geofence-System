@@ -127,7 +127,8 @@ class MainActivity : AppCompatActivity() {
                 geofencer.addGeofence(
                     lat = entity.latitude,
                     lng = entity.longitude,
-                    radiusMeters = entity.radiusMeters
+                    radiusMeters = entity.radiusMeters,
+                    requestId = entity.name
                 )
             }
 

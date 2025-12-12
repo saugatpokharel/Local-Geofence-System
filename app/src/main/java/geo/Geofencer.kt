@@ -31,10 +31,17 @@ class Geofencer(private val context: Context) {
         )
     }
 
+    /**
+     * Register a geofence with the Android geofencing system.
+     *
+     * @param requestId Optional ID to identify the geofence.
+     *                  If null, a random ID is generated.
+     */
     fun addGeofence(
         lat: Double,
         lng: Double,
-        radiusMeters: Float
+        radiusMeters: Float,
+        requestId: String? = null
     ) {
 
         Toast.makeText(context, "addGeofence() called", Toast.LENGTH_SHORT).show()
@@ -66,12 +73,14 @@ class Geofencer(private val context: Context) {
                     "No BACKGROUND_LOCATION permission – geofences may not trigger reliably.",
                     Toast.LENGTH_LONG
                 ).show()
-                // We still attempt to add the geofence, but it may not fire in background.
+                // Still attempt to add the geofence.
             }
         }
 
+        val id = requestId ?: "GEOFENCE_${System.currentTimeMillis()}"
+
         val geofence = Geofence.Builder()
-            .setRequestId("GEOFENCE_${System.currentTimeMillis()}")
+            .setRequestId(id)
             .setCircularRegion(lat, lng, radiusMeters)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(

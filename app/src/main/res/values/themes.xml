@@ -2,4 +2,12 @@
 <resources>
 
     <style name="Theme.GeoFenceApplication" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.GeoFenceApplication.GeofenceDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <!-- Make dialog smaller -->
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowMinWidthMajor">50%</item>  <!-- width when portrait -->
+        <item name="android:windowMinWidthMinor">50%</item>  <!-- width when landscape -->
+
+    </style>
+
 </resources>

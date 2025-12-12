@@ -15,6 +15,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.geofenceapplication.R
 import com.example.geofenceapplication.geo.Geofencer
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -41,11 +43,13 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
 
     private var radius = 300f
     private lateinit var geofencer: Geofencer
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         geofencer = Geofencer(requireContext())
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         val mapFragment =
             childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
@@ -118,7 +122,12 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                 Toast.makeText(context, "Adding geofence…", Toast.LENGTH_SHORT).show()
 
                 // 1) Register geofence with Android geofencing APIs
-                geofencer.addGeofence(latLng.latitude, latLng.longitude, radius)
+                geofencer.addGeofence(
+                    lat = latLng.latitude,
+                    lng = latLng.longitude,
+                    radiusMeters = radius,
+                    requestId = finalName    // use friendly name as requestId
+                )
 
                 // 2) Persist it with the chosen name
                 saveGeofenceToDb(latLng, radius, finalName)
@@ -137,6 +146,49 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
             .show()
     }
 
+    /**
+     * Enable the blue "my location" dot and center the camera on the
+     * device's last known location, if available. If not, fall back to Dublin.
+     */
+    @SuppressLint("MissingPermission")
+    private fun enableMyLocationAndCenter() {
+        val map = googleMap ?: return
+
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            map.isMyLocationEnabled = true
+
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        map.moveCamera(
+                            CameraUpdateFactory.newLatLngZoom(
+                                currentLatLng,
+                                15f
+                            )
+                        )
+                    } else {
+                        // No last known location: fallback to Dublin
+                        val dublin = LatLng(53.3498, -6.2603)
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(dublin, 15f))
+                    }
+                }
+                .addOnFailureListener {
+                    // On error, just fallback to Dublin
+                    val dublin = LatLng(53.3498, -6.2603)
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(dublin, 15f))
+                }
+        } else {
+            // No permission, move to Dublin and ask for it
+            val dublin = LatLng(53.3498, -6.2603)
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(dublin, 15f))
+        }
+    }
+
     @SuppressLint("MissingPermission")
     override fun onMapReady(gMap: GoogleMap) {
         googleMap = gMap
@@ -148,7 +200,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            gMap.isMyLocationEnabled = true
+            enableMyLocationAndCenter()
         } else {
             // Ask for permission directly from this Fragment
             requestPermissions(
@@ -158,10 +210,11 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                 ),
                 LOCATION_PERMISSION_REQUEST_CODE
             )
-        }
 
-        val defaultLatLng = LatLng(53.3498, -6.2603) // Dublin
-        gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLatLng, 15f))
+            // Until permission is granted, just show Dublin
+            val dublin = LatLng(53.3498, -6.2603)
+            gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(dublin, 15f))
+        }
 
         // LONG PRESS sets the geofence center and shows a naming dialog
         gMap.setOnMapLongClickListener { latLng ->
@@ -201,20 +254,14 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
-                googleMap?.let { map ->
-                    if (ContextCompat.checkSelfPermission(
-                            requireContext(),
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        map.isMyLocationEnabled = true
-                        Toast.makeText(
-                            requireContext(),
-                            "Location permission granted",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+                // Now that we have permission, enable My Location and center
+                enableMyLocationAndCenter()
+
+                Toast.makeText(
+                    requireContext(),
+                    "Location permission granted",
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 Toast.makeText(
                     requireContext(),

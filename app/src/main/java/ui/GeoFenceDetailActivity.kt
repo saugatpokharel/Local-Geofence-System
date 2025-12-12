@@ -1,5 +1,6 @@
 package com.example.geofenceapplication.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,19 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.lifecycleScope
 import com.example.geofenceapplication.ui.theme.GeoFenceApplicationTheme
-import data.AppDatabase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class GeofenceDetailActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // These come from the intent extras passed by GeofencesFragment
-        val geofenceId = intent.getLongExtra("id", -1L)
         val name = intent.getStringExtra("name") ?: "Unknown geofence"
         val latitude = intent.getDoubleExtra("lat", 0.0)
         val longitude = intent.getDoubleExtra("lng", 0.0)
@@ -46,12 +41,8 @@ class GeofenceDetailActivity : ComponentActivity() {
                         latitude = latitude,
                         longitude = longitude,
                         radiusMeters = radius,
-                        canDelete = geofenceId > 0L,
-                        onDelete = {
-                            if (geofenceId > 0L) {
-                                deleteGeofence(geofenceId)
-                            }
-                            finish()
+                        onShare = {
+                            shareGeofence(name, latitude, longitude, radius)
                         },
                         onBack = { finish() }
                     )
@@ -60,11 +51,24 @@ class GeofenceDetailActivity : ComponentActivity() {
         }
     }
 
-    private fun deleteGeofence(id: Long) {
-        val dao = AppDatabase.getInstance(applicationContext).geofenceDao
-        lifecycleScope.launch(Dispatchers.IO) {
-            dao.deleteGeofence(id)
+    private fun shareGeofence(
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Float
+    ) {
+        val shareText =
+            "Geofence: $name\n" +
+                    "Latitude: ${"%.5f".format(latitude)}\n" +
+                    "Longitude: ${"%.5f".format(longitude)}\n" +
+                    "Radius: ${radiusMeters.toInt()} m"
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
         }
+
+        startActivity(Intent.createChooser(shareIntent, "Share geofence via"))
     }
 }
 
@@ -74,15 +78,14 @@ fun GeofenceDetailScreen(
     latitude: Double,
     longitude: Double,
     radiusMeters: Float,
-    canDelete: Boolean,
-    onDelete: () -> Unit,
+    onShare: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -114,10 +117,8 @@ fun GeofenceDetailScreen(
             textAlign = TextAlign.Center
         )
 
-        if (canDelete) {
-            Button(onClick = onDelete) {
-                Text(text = "Delete Geofence")
-            }
+        Button(onClick = onShare) {
+            Text(text = "Share Geofence")
         }
 
         Button(onClick = onBack) {

@@ -38,6 +38,10 @@
             android:name=".ui.SensorActivity"
             android:exported="false" />
 
+        <activity android:name=".ui.GeofenceAlertActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GeoFenceApplication.GeofenceDialog" />
+
         <!-- Broadcast Receiver for geofence events -->
         <receiver
             android:name=".geo.GeofenceBroadcastReceiver"
