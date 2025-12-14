@@ -11,11 +11,7 @@ import org.json.JSONObject
  * Under the hood this uses SharedPreferences + JSON so that we don't
  * need any extra database dependencies (like Room) for the project.
  *
- * Usage from anywhere in the app:
  *
- *   val db = AppDatabase.getInstance(context)
- *   val dao = db.geofenceDao
- *   val allGeofences = dao.getAllGeofences()
  */
 class AppDatabase private constructor(
     private val prefs: SharedPreferences

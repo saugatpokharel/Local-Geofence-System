@@ -3,7 +3,7 @@ package data
 /**
  * Data access object (DAO) for geofences.
  *
- * This is an abstraction over our storage.
+ * This is an abstraction over storage.
  * The implementation will live inside AppDatabase.
  */
 interface GeofenceDao {
@@ -21,8 +21,7 @@ interface GeofenceDao {
     /**
      * Insert a new geofence or update an existing one.
      *
-     * - If entity.id == 0L -> assign a new id and insert.
-     * - Otherwise -> replace the existing geofence with the same id.
+     *
      *
      * Returns the saved entity (with a non-zero id).
      */
@@ -34,8 +33,7 @@ interface GeofenceDao {
     fun deleteGeofence(id: Long)
 
     /**
-     * Remove all stored geofences.
-     * (Probably not needed often, but useful for debugging / reset.)
+
      */
     fun clearAll()
 }

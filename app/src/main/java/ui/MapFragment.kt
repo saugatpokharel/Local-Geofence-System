@@ -95,7 +95,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
 
     /**
      * Show a dialog so the user can give a friendly name to the geofence.
-     * Only after they confirm do we register + save the geofence.
+     * Only after they confirm register + save the geofence.
      */
     private fun showNameInputDialog(latLng: LatLng) {
         val context = requireContext()
@@ -116,7 +116,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
 
                 viewLifecycleOwner.lifecycleScope.launch {
 
-                    // 1️⃣ Save to DB FIRST (this gives us a real ID)
+                    // 1 Save to DB FIRST ,gives the real ID)
                     val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         val dao = AppDatabase.getInstance(requireContext()).geofenceDao
                         dao.upsertGeofence(
@@ -129,7 +129,7 @@ class MapFragment : Fragment(R.layout.fragment_map), OnMapReadyCallback {
                         )
                     }
 
-                    // 2️⃣ Register geofence with STABLE requestId
+                    // 2 Register geofence with STABLE requestId
                     val requestId = "GEOFENCE_${saved.id}"
                     geofencer.addGeofence(
                         lat = saved.latitude,

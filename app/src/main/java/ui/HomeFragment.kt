@@ -157,7 +157,7 @@ fun HomeScreenCompose(
             Text("Enable Notifications")
         }
 
-        // ✅ NEW: Help button
+        //  NEW: Help button
         Button(onClick = { showHelpDialog = true }) {
             Text("Help")
         }
