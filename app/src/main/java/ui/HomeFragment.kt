@@ -15,12 +15,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,18 +58,15 @@ class HomeFragment : Fragment() {
 
         return ComposeView(requireContext()).apply {
             setContent {
-                HomeScreenCompose(
-                    fusedLocationClient = fusedLocationClient
-                )
+                HomeScreenCompose(fusedLocationClient = fusedLocationClient)
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreenCompose(
-    fusedLocationClient: FusedLocationProviderClient,
+    fusedLocationClient: FusedLocationProviderClient
 ) {
     val context = LocalContext.current
 
@@ -79,7 +77,10 @@ fun HomeScreenCompose(
     var notificationsEnabled by remember { mutableStateOf(true) }
     var savedGeofenceCount by remember { mutableStateOf(0) }
 
-    // PERMISSION LAUNCHER for location
+    // Help dialog state
+    var showHelpDialog by remember { mutableStateOf(false) }
+
+    // Permission launcher for location
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
@@ -89,20 +90,25 @@ fun HomeScreenCompose(
                 }
             } else {
                 locationEnabled = false
-                Toast.makeText(context, "Permission denied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Location permission denied", Toast.LENGTH_SHORT).show()
             }
         }
 
-    // PERMISSION LAUNCHER for notifications (Android 13+)
+    // Permission launcher for notifications (Android 13+)
     val notificationPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { granted ->
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             notificationsEnabled = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
             if (!granted) {
                 Toast.makeText(context, "Notification permission denied", Toast.LENGTH_SHORT).show()
             }
         }
+
+    // Help dialog
+    if (showHelpDialog) {
+        HelpDialog(
+            onDismiss = { showHelpDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -122,34 +128,42 @@ fun HomeScreenCompose(
         // Show last known location
         Text(text = locationText)
 
-        // Request GPS location permission
+        // Request location permission
         Button(onClick = {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }) {
             Text("Request Location Permission")
         }
 
-        // Share app button
+        // Share app
         Button(onClick = {
-            val intent = Intent(Intent.ACTION_SEND)
-            intent.type = "text/plain"
-            intent.putExtra(Intent.EXTRA_TEXT, "Try my GeoFence app!")
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "Try my GeoFence app!")
+            }
             context.startActivity(Intent.createChooser(intent, "Share using"))
         }) {
             Text("Share App")
         }
 
-        // Enable notifications (needed so geofence notifications show on Android 13+)
+        // Enable notifications (Android 13+)
         Button(onClick = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                Toast.makeText(context, "Notifications enabled by default", Toast.LENGTH_SHORT).show()
             }
         }) {
             Text("Enable Notifications")
         }
 
-        // Automatically fetch last location + status on first open
-        LaunchedEffect(true) {
+        // ✅ NEW: Help button
+        Button(onClick = { showHelpDialog = true }) {
+            Text("Help")
+        }
+
+        // Load status when screen opens
+        LaunchedEffect(Unit) {
             // Location permission status
             locationEnabled = ContextCompat.checkSelfPermission(
                 context,
@@ -166,11 +180,12 @@ fun HomeScreenCompose(
                 true
             }
 
-            // Load number of saved geofences from local storage
+            // Load number of saved geofences
             savedGeofenceCount = withContext(Dispatchers.IO) {
                 AppDatabase.getInstance(context.applicationContext).geofenceDao.getAllGeofences().size
             }
 
+            // Fetch location if allowed
             checkAndFetchLocation(context, fusedLocationClient) { result ->
                 locationText = result
             }
@@ -179,6 +194,30 @@ fun HomeScreenCompose(
 }
 
 @Composable
+private fun HelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("How to use the app") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("• Go to the Map tab to create a geofence.")
+                Text("• Long-press on the map to set the geofence location.")
+                Text("• Use the slider to adjust the radius.")
+                Text("• Saved geofences appear in the Saved Geofences tab.")
+                Text("• Long-press a geofence in the list to delete it.")
+                Text("• Entering or exiting a geofence triggers an alert.")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        }
+    )
+}
+
+/* Bigger Status card */
+@Composable
 private fun StatusSummaryCard(
     locationEnabled: Boolean,
     notificationsEnabled: Boolean,
@@ -186,20 +225,20 @@ private fun StatusSummaryCard(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()          // ⬅️ full width
-            .padding(bottom = 20.dp),
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp), // ⬅️ more padding = bigger feel
+            modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = "Status",
-                style = MaterialTheme.typography.headlineSmall, // ⬅️ bigger title
+                style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -230,14 +269,8 @@ private fun StatusRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge // ⬅️ bigger text
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -247,10 +280,11 @@ fun getLastLocationCompose(
     onResult: (String) -> Unit
 ) {
     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-        if (location != null)
+        if (location != null) {
             onResult("Location: ${location.latitude}, ${location.longitude}")
-        else
+        } else {
             onResult("Location: unknown")
+        }
     }
 }
 
